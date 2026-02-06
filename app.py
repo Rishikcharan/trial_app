@@ -49,8 +49,12 @@ if st.button("Reset Today's Data"):
     st.rerun()
 
 # Read only the last 50 documents from Firestore
-docs = collection_ref.order_by("timestamp").limit_to_last(50).stream()
-data = [doc.to_dict() for doc in docs]
+try:
+    docs = collection_ref.limit_to_last(50).stream()
+    data = [doc.to_dict() for doc in docs]
+except Exception as e:
+    st.error(f"Error reading Firestore: {e}")
+    data = []
 
 df = pd.DataFrame(data)
 
