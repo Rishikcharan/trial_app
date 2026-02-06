@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import random
+import time
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -29,6 +30,7 @@ def add_new_value():
         "value": random.randint(0, 100)
     }
     collection_ref.add(new_row)
+    time.sleep(0.5)  # ✅ give Firestore time to commit
 
 # Function to reset today's data
 def reset_firestore():
@@ -48,9 +50,11 @@ if st.button("Reset Today's Data"):
     st.success(f"All data cleared for {today_str}")
     st.rerun()
 
-# Read only the last 50 documents from Firestore
+# Read last 50 documents safely
 try:
-    docs = collection_ref.limit_to_last(50).get()   # ✅ use get() instead of stream()
+    docs = collection_ref.limit_to_last(50).get()
+    if not docs:  # fallback if query empty
+        docs = collection_ref.stream()
     data = [doc.to_dict() for doc in docs]
 except Exception as e:
     st.error(f"Error reading Firestore: {e}")
@@ -60,23 +64,19 @@ df = pd.DataFrame(data)
 
 # Ensure required columns exist
 if not df.empty and "timestamp" in df.columns and "value" in df.columns:
-    # Convert timestamp strings to datetime objects
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-    df = df.dropna(subset=["timestamp", "value"])  # drop invalid rows
+    df = df.dropna(subset=["timestamp", "value"])
     df = df.sort_values("timestamp")
 
     if not df.empty:
         latest_value = df.iloc[-1]["value"]
         latest_time = df.iloc[-1]["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
 
-        # Metric card for latest value
         st.metric(label="Latest Sensor Value", value=latest_value)
         st.caption(f"Last updated: {latest_time}")
 
-        # Line chart of last 50 values
         st.line_chart(df.set_index("timestamp")["value"])
 
-        # Download button
         st.download_button(
             label=f"Download {today_str} data",
             data=df.to_csv(index=False),
