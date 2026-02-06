@@ -9,7 +9,6 @@ st.title("Daily Data Logger with Firebase")
 
 # Initialize Firebase only once
 if not firebase_admin._apps:
-    # Convert TOML section to dict
     firebase_secrets = dict(st.secrets["firebase"])
     cred = credentials.Certificate(firebase_secrets)
     firebase_admin.initialize_app(cred)
@@ -29,11 +28,10 @@ def add_new_value():
     }
     collection_ref.add(new_row)
 
-# Auto-refresh every 5 seconds
-st_autorefresh = st.experimental_autorefresh(interval=5000, limit=None)
-
-# Add new value each refresh
-add_new_value()
+# Button to refresh data
+if st.button("Refresh data"):
+    add_new_value()
+    st.success("New value added and data refreshed!")
 
 # Read all data from Firestore
 docs = collection_ref.stream()
@@ -41,17 +39,18 @@ data = [doc.to_dict() for doc in docs]
 df = pd.DataFrame(data)
 
 # Show latest values
-st.write(f"Latest values from {today_str}:", df.tail(10))
-
-# Plot graph
 if not df.empty:
+    st.write(f"Latest values from {today_str}:", df.tail(10))
+
+    # Plot graph
     st.line_chart(df.set_index("timestamp")["value"])
 
-# Download button
-if not df.empty:
+    # Download button
     st.download_button(
         label=f"Download {today_str} data",
         data=df.to_csv(index=False),
         file_name=f"data_{today_str}.csv",
         mime="text/csv"
     )
+else:
+    st.warning("No data yet. Click 'Refresh data' to add the first entry.")
