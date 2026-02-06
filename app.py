@@ -4,6 +4,7 @@ import random
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
+from streamlit_autorefresh import st_autorefresh
 
 st.title("Daily Data Logger with Firebase")
 
@@ -28,19 +29,24 @@ def add_new_value():
     }
     collection_ref.add(new_row)
 
-# Button to refresh data
-if st.button("Refresh data"):
-    add_new_value()
-    st.success("New value added and data refreshed!")
+# Auto-refresh every 5 seconds
+st_autorefresh(interval=5000, limit=None)
+
+# Add new value each refresh
+add_new_value()
 
 # Read all data from Firestore
 docs = collection_ref.stream()
 data = [doc.to_dict() for doc in docs]
 df = pd.DataFrame(data)
 
-# Show latest values
+# Show summary instead of raw table
 if not df.empty:
-    st.write(f"Latest values from {today_str}:", df.tail(10))
+    latest_value = df.iloc[-1]["value"]
+    latest_time = df.iloc[-1]["timestamp"]
+
+    st.metric(label="Latest Sensor Value", value=latest_value, delta=None)
+    st.caption(f"Last updated: {latest_time}")
 
     # Plot graph
     st.line_chart(df.set_index("timestamp")["value"])
@@ -53,4 +59,4 @@ if not df.empty:
         mime="text/csv"
     )
 else:
-    st.warning("No data yet. Click 'Refresh data' to add the first entry.")
+    st.warning("No data yet. Please wait for auto-refresh to log the first entry.")
