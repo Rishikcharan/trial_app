@@ -7,11 +7,14 @@ from firebase_admin import credentials, firestore
 
 st.title("Daily Data Logger with Firebase")
 
-# Initialize Firebase (using Streamlit Secrets)
+# Initialize Firebase only once
 if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["firebase"])
+    # Convert TOML section to dict
+    firebase_secrets = dict(st.secrets["firebase"])
+    cred = credentials.Certificate(firebase_secrets)
     firebase_admin.initialize_app(cred)
 
+# Firestore client
 db = firestore.client()
 
 # Collection name = today's date
@@ -41,12 +44,14 @@ df = pd.DataFrame(data)
 st.write(f"Latest values from {today_str}:", df.tail(10))
 
 # Plot graph
-st.line_chart(df.set_index("timestamp")["value"])
+if not df.empty:
+    st.line_chart(df.set_index("timestamp")["value"])
 
 # Download button
-st.download_button(
-    label=f"Download {today_str} data",
-    data=df.to_csv(index=False),
-    file_name=f"data_{today_str}.csv",
-    mime="text/csv"
-)
+if not df.empty:
+    st.download_button(
+        label=f"Download {today_str} data",
+        data=df.to_csv(index=False),
+        file_name=f"data_{today_str}.csv",
+        mime="text/csv"
+    )
