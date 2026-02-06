@@ -52,4 +52,18 @@ if not df.empty:
     latest_time = df.iloc[-1]["timestamp"]
 
     # Metric card for latest value
-    st.metric(label="Latest Sensor Value
+    st.metric(label="Latest Sensor Value", value=latest_value)
+    st.caption(f"Last updated: {latest_time}")
+
+    # Line chart of last 20 values (rolling window)
+    st.line_chart(df.tail(20).set_index("timestamp")["value"])
+
+    # Download button
+    st.download_button(
+        label=f"Download {today_str} data",
+        data=df.to_csv(index=False),
+        file_name=f"data_{today_str}.csv",
+        mime="text/csv"
+    )
+else:
+    st.warning("No data yet. Waiting for auto-refresh to log the first entry...")
