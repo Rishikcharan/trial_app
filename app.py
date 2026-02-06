@@ -50,30 +50,36 @@ if st.button("Reset Today's Data"):
 
 # Read all data from Firestore
 docs = collection_ref.stream()
-data = [doc.to_dict() for doc in docs if "timestamp" in doc.to_dict() and "value" in doc.to_dict()]
+data = [doc.to_dict() for doc in docs]
+
 df = pd.DataFrame(data)
 
-# Show summary instead of raw table
-if not df.empty:
-    # Sort by timestamp to ensure correct order
+# Ensure required columns exist
+if not df.empty and "timestamp" in df.columns and "value" in df.columns:
+    # Convert timestamp strings to datetime objects
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    df = df.dropna(subset=["timestamp", "value"])  # drop invalid rows
     df = df.sort_values("timestamp")
 
-    latest_value = df.iloc[-1]["value"]
-    latest_time = df.iloc[-1]["timestamp"]
+    if not df.empty:
+        latest_value = df.iloc[-1]["value"]
+        latest_time = df.iloc[-1]["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
 
-    # Metric card for latest value
-    st.metric(label="Latest Sensor Value", value=latest_value)
-    st.caption(f"Last updated: {latest_time}")
+        # Metric card for latest value
+        st.metric(label="Latest Sensor Value", value=latest_value)
+        st.caption(f"Last updated: {latest_time}")
 
-    # Line chart of last 20 values (rolling window)
-    st.line_chart(df.tail(20).set_index("timestamp")["value"])
+        # Line chart of last 20 values (rolling window)
+        st.line_chart(df.tail(20).set_index("timestamp")["value"])
 
-    # Download button
-    st.download_button(
-        label=f"Download {today_str} data",
-        data=df.to_csv(index=False),
-        file_name=f"data_{today_str}.csv",
-        mime="text/csv"
-    )
+        # Download button
+        st.download_button(
+            label=f"Download {today_str} data",
+            data=df.to_csv(index=False),
+            file_name=f"data_{today_str}.csv",
+            mime="text/csv"
+        )
+    else:
+        st.warning("No valid data available yet. Waiting for auto-refresh...")
 else:
     st.warning("No data yet. Waiting for auto-refresh to log the first entry...")
