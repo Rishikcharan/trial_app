@@ -29,14 +29,24 @@ def add_new_value():
         "value": random.randint(0, 100)
     }
     collection_ref.add(new_row)
-    # Debug log so you can see writes happening
-    st.write("Added new row:", new_row)
 
-# Auto-refresh every 10 seconds (gives Firestore time to commit)
+# Function to reset today's data
+def reset_firestore():
+    docs = collection_ref.stream()
+    for doc in docs:
+        doc.reference.delete()
+
+# Auto-refresh every 10 seconds
 st_autorefresh(interval=10000, limit=None)
 
 # Add new value each refresh
 add_new_value()
+
+# Reset button
+if st.button("Reset Today's Data"):
+    reset_firestore()
+    st.success(f"All data cleared for {today_str}")
+    st.rerun()
 
 # Read all data from Firestore
 docs = collection_ref.stream()
