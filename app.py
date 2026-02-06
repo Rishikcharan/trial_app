@@ -6,7 +6,6 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="Daily Data Logger", layout="centered")
 st.title("Daily Data Logger with Firebase")
 
 # Initialize Firebase only once
@@ -30,56 +29,34 @@ def add_new_value():
     }
     collection_ref.add(new_row)
 
-# Function to reset today's data
-def reset_firestore():
-    docs = collection_ref.stream()
-    for doc in docs:
-        doc.reference.delete()
-
-# Auto-refresh every 10 seconds
-st_autorefresh(interval=10000, limit=None)
+# Auto-refresh every 5 seconds
+st_autorefresh(interval=5000, limit=None)
 
 # Add new value each refresh
 add_new_value()
 
-# Reset button
-if st.button("Reset Today's Data"):
-    reset_firestore()
-    st.success(f"All data cleared for {today_str}")
-    st.rerun()
-
 # Read all data from Firestore
 docs = collection_ref.stream()
 data = [doc.to_dict() for doc in docs]
-
 df = pd.DataFrame(data)
 
-# Ensure required columns exist
-if not df.empty and "timestamp" in df.columns and "value" in df.columns:
-    # Convert timestamp strings to datetime objects
-    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-    df = df.dropna(subset=["timestamp", "value"])  # drop invalid rows
-    df = df.sort_values("timestamp")
+# Show summary instead of raw table
+if not df.empty:
+    latest_value = df.iloc[-1]["value"]
+    latest_time = df.iloc[-1]["timestamp"]
 
-    if not df.empty:
-        latest_value = df.iloc[-1]["value"]
-        latest_time = df.iloc[-1]["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+    st.metric(label="Latest Sensor Value", value=latest_value, delta=None)
+    st.caption(f"Last updated: {latest_time}")
 
-        # Metric card for latest value
-        st.metric(label="Latest Sensor Value", value=latest_value)
-        st.caption(f"Last updated: {latest_time}")
+    # Plot graph
+    st.line_chart(df.set_index("timestamp")["value"])
 
-        # Line chart of last 20 values (rolling window)
-        st.line_chart(df.tail(20).set_index("timestamp")["value"])
-
-        # Download button
-        st.download_button(
-            label=f"Download {today_str} data",
-            data=df.to_csv(index=False),
-            file_name=f"data_{today_str}.csv",
-            mime="text/csv"
-        )
-    else:
-        st.warning("No valid data available yet. Waiting for auto-refresh...")
+    # Download button
+    st.download_button(
+        label=f"Download {today_str} data",
+        data=df.to_csv(index=False),
+        file_name=f"data_{today_str}.csv",
+        mime="text/csv"
+    )
 else:
-    st.warning("No data yet. Waiting for auto-refresh to log the first entry...")
+    st.warning("No data yet. Please wait for auto-refresh to log the first entry.")
