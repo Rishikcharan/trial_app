@@ -6,6 +6,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from streamlit_autorefresh import st_autorefresh
 
+st.set_page_config(page_title="Daily Data Logger", layout="centered")
 st.title("Daily Data Logger with Firebase")
 
 # Initialize Firebase only once
@@ -28,35 +29,27 @@ def add_new_value():
         "value": random.randint(0, 100)
     }
     collection_ref.add(new_row)
+    # Debug log so you can see writes happening
+    st.write("Added new row:", new_row)
 
-# Auto-refresh every 5 seconds
-st_autorefresh(interval=5000, limit=None)
+# Auto-refresh every 10 seconds (gives Firestore time to commit)
+st_autorefresh(interval=10000, limit=None)
 
 # Add new value each refresh
 add_new_value()
 
 # Read all data from Firestore
 docs = collection_ref.stream()
-data = [doc.to_dict() for doc in docs]
+data = [doc.to_dict() for doc in docs if "timestamp" in doc.to_dict() and "value" in doc.to_dict()]
 df = pd.DataFrame(data)
 
 # Show summary instead of raw table
 if not df.empty:
+    # Sort by timestamp to ensure correct order
+    df = df.sort_values("timestamp")
+
     latest_value = df.iloc[-1]["value"]
     latest_time = df.iloc[-1]["timestamp"]
 
-    st.metric(label="Latest Sensor Value", value=latest_value, delta=None)
-    st.caption(f"Last updated: {latest_time}")
-
-    # Plot graph
-    st.line_chart(df.set_index("timestamp")["value"])
-
-    # Download button
-    st.download_button(
-        label=f"Download {today_str} data",
-        data=df.to_csv(index=False),
-        file_name=f"data_{today_str}.csv",
-        mime="text/csv"
-    )
-else:
-    st.warning("No data yet. Please wait for auto-refresh to log the first entry.")
+    # Metric card for latest value
+    st.metric(label="Latest Sensor Value
