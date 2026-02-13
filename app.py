@@ -4,6 +4,7 @@ import altair as alt
 import firebase_admin
 from firebase_admin import credentials, db
 import datetime
+import time
 
 
 # ---------------- FIREBASE INIT ----------------
@@ -114,6 +115,7 @@ with tab_history:
             )
     else:
         st.warning("No historical data found yet.")
+
 
 
 
