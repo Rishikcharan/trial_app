@@ -22,6 +22,9 @@ tab_today, tab_history = st.tabs(["📊 Today", "📅 Previous Dates"])
 
 # ---------------- TODAY TAB ----------------
 with tab_today:
+    from streamlit_autorefresh import st_autorefresh
+
+
     # Auto-refresh every 5 seconds
     st_autorefresh = st.autorefresh(interval=5000, limit=None)
 
@@ -110,3 +113,4 @@ with tab_history:
             )
     else:
         st.warning("No historical data found yet.")
+
