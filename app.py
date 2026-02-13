@@ -1,65 +1,89 @@
 import streamlit as st
 import pandas as pd
-import requests
+import random
 from datetime import datetime
-import altair as alt
+import firebase_admin
+from firebase_admin import credentials, firestore
 from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="ESP32 Sensor Dashboard", layout="wide")
-st.title("ESP32 Smart Environment Dashboard")
+st.set_page_config(page_title="Daily Data Logger", layout="centered")
+st.title("Daily Data Logger with Firebase")
 
-# 🔑 Update with your ESP32 IP (from Serial Monitor)
-ESP32_IP = "http://10.20.61.91"   # replace with your ESP32 IP
-DATA_URL = f"{ESP32_IP}/data"
+# Initialize Firebase only once
+if not firebase_admin._apps:
+    firebase_secrets = dict(st.secrets["firebase"])
+    cred = credentials.Certificate(firebase_secrets)
+    firebase_admin.initialize_app(cred)
 
-# Auto-refresh every 5 seconds
-st_autorefresh(interval=5000, limit=None)
+# Firestore client
+db = firestore.client()
 
-# Storage for data
-if "data_log" not in st.session_state:
-    st.session_state["data_log"] = []
+# Collection name = today's date
+today_str = datetime.now().strftime("%Y-%m-%d")
+collection_ref = db.collection(today_str)
 
-# Fetch ESP32 data
+# Function to add new value
+def add_new_value():
+    new_row = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "value": random.randint(0, 100)
+    }
+    collection_ref.add(new_row)
+
+# Function to reset today's data
+def reset_firestore():
+    docs = collection_ref.stream()
+    for doc in docs:
+        doc.reference.delete()
+
+# Auto-refresh every 10 seconds
+st_autorefresh(interval=10000, limit=None)
+
+# Add new value each refresh
+add_new_value()
+
+# Reset button
+if st.button("Reset Today's Data"):
+    reset_firestore()
+    st.success(f"All data cleared for {today_str}")
+    st.rerun()
+
+# Read only the last 50 documents from Firestore
 try:
-    response = requests.get(DATA_URL, timeout=3)
-    if response.status_code == 200:
-        d = response.json()
-        d["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.session_state["data_log"].append(d)
-    else:
-        st.warning("ESP32 not responding...")
+    docs = collection_ref.limit_to_last(50).stream()
+    data = [doc.to_dict() for doc in docs]
 except Exception as e:
-    st.error(f"Error fetching ESP32 data: {e}")
+    st.error(f"Error reading Firestore: {e}")
+    data = []
 
-df = pd.DataFrame(st.session_state["data_log"])
+df = pd.DataFrame(data)
 
-if not df.empty:
-    latest = df.iloc[-1]
+# Ensure required columns exist
+if not df.empty and "timestamp" in df.columns and "value" in df.columns:
+    # Convert timestamp strings to datetime objects
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    df = df.dropna(subset=["timestamp", "value"])  # drop invalid rows
+    df = df.sort_values("timestamp")
 
-    # Metrics
-    st.metric("Temperature (°C)", latest["temp"])
-    st.metric("Air Quality (AQI)", latest["aqi"])
-    st.caption(f"Last updated: {latest['timestamp']}")
+    if not df.empty:
+        latest_value = df.iloc[-1]["value"]
+        latest_time = df.iloc[-1]["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
 
-    # Chart function
-    def plot_chart(df, y_col, color, title):
-        chart = alt.Chart(df).mark_line(color=color).encode(
-            x="timestamp:T",
-            y=f"{y_col}:Q"
+        # Metric card for latest value
+        st.metric(label="Latest Sensor Value", value=latest_value)
+        st.caption(f"Last updated: {latest_time}")
+
+        # Line chart of last 50 values
+        st.line_chart(df.set_index("timestamp")["value"])
+
+        # Download button
+        st.download_button(
+            label=f"Download {today_str} data",
+            data=df.to_csv(index=False),
+            file_name=f"data_{today_str}.csv",
+            mime="text/csv"
         )
-        st.subheader(title)
-        st.altair_chart(chart, use_container_width=True)
-
-    # Graphs
-    plot_chart(df, "temp", "green", "Temperature")
-    plot_chart(df, "aqi", "blue", "Air Quality (MQ-135)")
-
-    # Download data
-    st.download_button(
-        label="Download Data",
-        data=df.to_csv(index=False),
-        file_name="esp32_data.csv",
-        mime="text/csv"
-    )
+    else:
+        st.warning("No valid data available yet. Waiting for auto-refresh...")
 else:
-    st.info("Waiting for ESP32 data...")
+    st.warning("No data yet. Waiting for auto-refresh to log the first entry...")
