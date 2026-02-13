@@ -14,7 +14,7 @@ cred = credentials.Certificate(firebase_config)
 # Initialize Firebase app
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred, {
-        "databaseURL": "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com/"
+        "databaseURL": "https://trial-app-d297a-default-rtdb.asia-southeast1.firebasedatabase.app/"
     })
 
 # ---------------- STREAMLIT UI ----------------
@@ -51,3 +51,4 @@ if data:
     st.altair_chart(chart, use_container_width=True)
 else:
     st.warning("No sensor data found in Firebase yet.")
+
