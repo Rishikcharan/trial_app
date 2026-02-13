@@ -15,10 +15,7 @@ DATA_URL = f"{ESP32_IP}/data"
 # Sidebar controls
 st.sidebar.header("Controls")
 temp_threshold = st.sidebar.slider("Temperature Threshold (°C)", 0, 50, 35)
-hum_threshold = st.sidebar.slider("Humidity Threshold (%)", 0, 100, 70)
 aqi_threshold = st.sidebar.slider("Air Quality Threshold (AQI)", 0, 500, 300)
-gas_threshold = st.sidebar.slider("Gas Threshold (%)", 0, 100, 30)
-noise_threshold = st.sidebar.slider("Noise Threshold (dB)", 30, 100, 65)
 
 # Auto-refresh every 5 seconds
 st_autorefresh(interval=5000, limit=None)
@@ -46,23 +43,14 @@ if not df.empty:
 
     # Metrics
     st.metric("Temperature (°C)", latest["temp"])
-    st.metric("Humidity (%)", latest["hum"])
     st.metric("Air Quality (AQI)", latest["aqi"])
-    st.metric("Gas (%)", latest["gas"])
-    st.metric("Noise (dB)", latest["noise"])
     st.caption(f"Last updated: {latest['timestamp']}")
 
     # ✅ Real-time alerts
     if latest["temp"] > temp_threshold:
         st.error(f"🌡️ Temperature {latest['temp']}°C exceeded {temp_threshold}°C!")
-    if latest["hum"] > hum_threshold:
-        st.error(f"💧 Humidity {latest['hum']}% exceeded {hum_threshold}%!")
     if latest["aqi"] > aqi_threshold:
         st.error(f"🌫 AQI {latest['aqi']} exceeded {aqi_threshold}!")
-    if latest["gas"] > gas_threshold:
-        st.error(f"🔥 Gas {latest['gas']}% exceeded {gas_threshold}%!")
-    if latest["noise"] > noise_threshold:
-        st.error(f"🔊 Noise {latest['noise']} dB exceeded {noise_threshold} dB!")
 
     # Chart function
     def plot_chart(df, y_col, color, threshold, title):
@@ -78,10 +66,7 @@ if not df.empty:
 
     # Graphs
     plot_chart(df, "temp", "green", temp_threshold, "Temperature")
-    plot_chart(df, "hum", "blue", hum_threshold, "Humidity")
-    plot_chart(df, "aqi", "purple", aqi_threshold, "Air Quality (MQ-135)")
-    plot_chart(df, "gas", "orange", gas_threshold, "Gas Level (MQ-2)")
-    plot_chart(df, "noise", "brown", noise_threshold, "Noise Level")
+    plot_chart(df, "aqi", "blue", aqi_threshold, "Air Quality (MQ-135)")
 
     # Download data
     st.download_button(
