@@ -12,11 +12,6 @@ st.title("ESP32 Smart Environment Dashboard")
 ESP32_IP = "http://10.20.61.91"   # replace with your ESP32 IP
 DATA_URL = f"{ESP32_IP}/data"
 
-# Sidebar controls
-st.sidebar.header("Controls")
-temp_threshold = st.sidebar.slider("Temperature Threshold (°C)", 0, 50, 35)
-aqi_threshold = st.sidebar.slider("Air Quality Threshold (AQI)", 0, 500, 300)
-
 # Auto-refresh every 5 seconds
 st_autorefresh(interval=5000, limit=None)
 
@@ -46,27 +41,18 @@ if not df.empty:
     st.metric("Air Quality (AQI)", latest["aqi"])
     st.caption(f"Last updated: {latest['timestamp']}")
 
-    # ✅ Real-time alerts
-    if latest["temp"] > temp_threshold:
-        st.error(f"🌡️ Temperature {latest['temp']}°C exceeded {temp_threshold}°C!")
-    if latest["aqi"] > aqi_threshold:
-        st.error(f"🌫 AQI {latest['aqi']} exceeded {aqi_threshold}!")
-
     # Chart function
-    def plot_chart(df, y_col, color, threshold, title):
+    def plot_chart(df, y_col, color, title):
         chart = alt.Chart(df).mark_line(color=color).encode(
             x="timestamp:T",
             y=f"{y_col}:Q"
         )
-        threshold_line = alt.Chart(df).mark_rule(color="red").encode(
-            y=alt.Y("y:Q", axis=None)
-        ).transform_calculate(y=str(threshold))
         st.subheader(title)
-        st.altair_chart(chart + threshold_line, use_container_width=True)
+        st.altair_chart(chart, use_container_width=True)
 
     # Graphs
-    plot_chart(df, "temp", "green", temp_threshold, "Temperature")
-    plot_chart(df, "aqi", "blue", aqi_threshold, "Air Quality (MQ-135)")
+    plot_chart(df, "temp", "green", "Temperature")
+    plot_chart(df, "aqi", "blue", "Air Quality (MQ-135)")
 
     # Download data
     st.download_button(
