@@ -1,71 +1,53 @@
 import streamlit as st
 import pandas as pd
-import requests
-from datetime import datetime
 import altair as alt
-from streamlit_autorefresh import st_autorefresh
+import firebase_admin
+from firebase_admin import credentials, db
+import datetime
+import json
 
-st.set_page_config(page_title="ESP32 Sensor Dashboard", layout="wide")
-st.title("ESP32 Smart Environment Dashboard")
+# ---------------- FIREBASE INIT ----------------
+# Load Firebase credentials from Streamlit Secrets
+firebase_config = st.secrets["firebase"]
+cred = credentials.Certificate(firebase_config)
 
-# 🔑 Replace with your ESP32 IP from Serial Monitor
-ESP32_IP = "http://10.20.61.91"   # example
-DATA_URL = f"{ESP32_IP}/data"
+# Initialize Firebase app
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred, {
+        "databaseURL": "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com/"
+    })
 
-# Auto-refresh every 5 seconds
-st_autorefresh(interval=5000, limit=None)
+# ---------------- STREAMLIT UI ----------------
+st.set_page_config(page_title="LEMS Smart Dashboard", layout="wide")
+st.title("🌍 LEMS Smart Environment Dashboard")
 
-# Storage for data
-if "data_log" not in st.session_state:
-    st.session_state["data_log"] = []
+# Fetch latest sensor data
+ref = db.reference("/sensors")
+data = ref.get()
 
-# Fetch ESP32 data
-try:
-    response = requests.get(DATA_URL, timeout=3)
-    if response.status_code == 200:
-        # Safely parse JSON, ignoring emoji encoding issues
-        d = response.json()
-        # Keep only numeric values we care about
-        clean_data = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "temp": d.get("temp"),
-            "aqi": d.get("aqi")
-        }
-        st.session_state["data_log"].append(clean_data)
-    else:
-        st.warning("ESP32 not responding...")
-except Exception as e:
-    st.error(f"Error fetching ESP32 data: {e}")
+if data:
+    # Show metrics
+    col1, col2, col3 = st.columns(3)
+    col1.metric("🌡 Temperature (°C)", f"{data.get('temp', '--')}")
+    col2.metric("💧 Humidity (%)", f"{data.get('hum', '--')}")
+    col3.metric("🌫 AQI", f"{data.get('aqi', '--')}")
 
-df = pd.DataFrame(st.session_state["data_log"])
+    col4, col5 = st.columns(2)
+    col4.metric("🔥 Gas (%)", f"{data.get('gas', '--')}")
+    col5.metric("🔊 Noise (dB)", f"{data.get('noise', '--')}")
 
-if not df.empty:
-    latest = df.iloc[-1]
+    st.subheader("System Status")
+    st.info(f"{data.get('status', 'No status')}")
+    st.write(f"Action: **{data.get('action', 'N/A')}**")
 
-    # Metrics
-    st.metric("Temperature (°C)", latest["temp"])
-    st.metric("Air Quality (AQI)", latest["aqi"])
-    st.caption(f"Last updated: {latest['timestamp']}")
-
-    # Chart function
-    def plot_chart(df, y_col, color, title):
-        chart = alt.Chart(df).mark_line(color=color).encode(
-            x="timestamp:T",
-            y=f"{y_col}:Q"
-        )
-        st.subheader(title)
-        st.altair_chart(chart, use_container_width=True)
-
-    # Graphs
-    plot_chart(df, "temp", "green", "Temperature")
-    plot_chart(df, "aqi", "blue", "Air Quality (MQ-135)")
-
-    # Download data
-    st.download_button(
-        label="Download Data",
-        data=df.to_csv(index=False),
-        file_name="esp32_data.csv",
-        mime="text/csv"
+    # Example historical chart (if you log history in Firebase)
+    history = pd.DataFrame([
+        {"time": datetime.datetime.now(), "temp": data.get("temp", 0), "aqi": data.get("aqi", 0)}
+    ])
+    chart = alt.Chart(history).mark_line().encode(
+        x="time:T",
+        y="temp:Q"
     )
+    st.altair_chart(chart, use_container_width=True)
 else:
-    st.info("Waiting for ESP32 data...")
+    st.warning("No sensor data found in Firebase yet.")
