@@ -1,9 +1,11 @@
 import streamlit as st
+from streamlit import st_autorefresh
 import pandas as pd
 import altair as alt
 import firebase_admin
 from firebase_admin import credentials, db
 import datetime
+
 
 # ---------------- FIREBASE INIT ----------------
 firebase_config = dict(st.secrets["firebase"])
@@ -22,7 +24,6 @@ tab_today, tab_history = st.tabs(["📊 Today", "📅 Previous Dates"])
 
 # ---------------- TODAY TAB ----------------
 with tab_today:
-    from streamlit import st_autorefresh
 
     # inside your Today tab
     st_autorefresh(interval=5000, limit=None)
@@ -112,6 +113,7 @@ with tab_history:
             )
     else:
         st.warning("No historical data found yet.")
+
 
 
 
