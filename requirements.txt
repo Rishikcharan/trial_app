@@ -1,8 +1,5 @@
 streamlit
+streamlit-autorefresh
 firebase-admin
 pandas
 altair
-streamlit-autorefresh
-
-
-
