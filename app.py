@@ -9,7 +9,7 @@ st.set_page_config(page_title="ESP32 Sensor Dashboard", layout="wide")
 st.title("ESP32 Smart Environment Dashboard")
 
 # 🔑 Replace with your ESP32 IP from Serial Monitor
-ESP32_IP = "http://192.168.1.100"   # example
+ESP32_IP = "http://10.20.61.91"   # example
 DATA_URL = f"{ESP32_IP}/data"
 
 # Auto-refresh every 5 seconds
@@ -63,3 +63,4 @@ if not df.empty:
     )
 else:
     st.info("Waiting for ESP32 data...")
+
