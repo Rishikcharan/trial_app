@@ -23,7 +23,7 @@ tab_today, tab_history = st.tabs(["📊 Today", "📅 Previous Dates"])
 # ---------------- TODAY TAB ----------------
 with tab_today:
     # Auto-refresh every 5 seconds
-    st.experimental_autorefresh(interval=5000, limit=None)
+    st_autorefresh = st.autorefresh(interval=5000, limit=None)
 
     ref = db.reference("/sensors")
     data = ref.get()
