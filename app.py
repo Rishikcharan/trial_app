@@ -23,9 +23,15 @@ if "data_log" not in st.session_state:
 try:
     response = requests.get(DATA_URL, timeout=3)
     if response.status_code == 200:
+        # Safely parse JSON, ignoring emoji encoding issues
         d = response.json()
-        d["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.session_state["data_log"].append(d)
+        # Keep only numeric values we care about
+        clean_data = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "temp": d.get("temp"),
+            "aqi": d.get("aqi")
+        }
+        st.session_state["data_log"].append(clean_data)
     else:
         st.warning("ESP32 not responding...")
 except Exception as e:
@@ -63,4 +69,3 @@ if not df.empty:
     )
 else:
     st.info("Waiting for ESP32 data...")
-
