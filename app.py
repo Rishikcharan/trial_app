@@ -8,7 +8,7 @@ import json
 
 # ---------------- FIREBASE INIT ----------------
 # Load Firebase credentials from Streamlit Secrets
-firebase_config = st.secrets["firebase"]
+firebase_config = dict(st.secrets["firebase"])
 cred = credentials.Certificate(firebase_config)
 
 # Initialize Firebase app
@@ -51,4 +51,5 @@ if data:
     st.altair_chart(chart, use_container_width=True)
 else:
     st.warning("No sensor data found in Firebase yet.")
+
 
