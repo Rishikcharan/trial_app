@@ -4,8 +4,7 @@ import altair as alt
 import firebase_admin
 from firebase_admin import credentials, db
 import datetime
-import time
-
+from streamlit_autorefresh import st_autorefresh
 
 # ---------------- FIREBASE INIT ----------------
 firebase_config = dict(st.secrets["firebase"])
@@ -24,11 +23,8 @@ tab_today, tab_history = st.tabs(["📊 Today", "📅 Previous Dates"])
 
 # ---------------- TODAY TAB ----------------
 with tab_today:
-
-    # inside your Today tab
-    time.sleep(5)
-    st.experimental_rerun()
-
+    # Auto-refresh every 5 seconds
+    st_autorefresh(interval=5000, limit=None)
 
     ref = db.reference("/sensors")
     data = ref.get()
@@ -115,9 +111,3 @@ with tab_history:
             )
     else:
         st.warning("No historical data found yet.")
-
-
-
-
-
-
